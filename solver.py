@@ -149,14 +149,11 @@ class Calculator:
 
     # Вывод системы на экран
     def __print_system(self):
-        i = 0
-        while i < self.n:
-            j = 0
-            while j < self.n:
-                print(self.system[i][j], 'x[' + str(j) + '] ', end='')
-                j += 1
-            print(self.system[i][-2], self.system[i][-1])
-            i += 1
+        # print(color.UNDERLINE + color.YELLOW, 'Система уравнений:', color.END)
+
+        for row in self.system:
+            formatted_row = "  ".join(f"{float(elem):8.3f}" if elem != '|' else "|" for elem in row)
+            print(formatted_row)
 
     # Подсчет и вывод определителя на экран
     def __get_determinate(self):
@@ -222,8 +219,9 @@ class Calculator:
                     A[i][j] = float(self.system[i][j])  # Преобразуем коэффициенты в float
                 B[i] = float(self.system[i][-1])  # Свободный член тоже в float
 
-            print("Матрица A:", A, sep="\n")
-            print("Вектор B:", B, sep="\n")
+            # Красивый вывод матрицы A и вектора B
+            self.__print_matrix(A, "Матрица A:")
+            self.__print_vector(B, "Вектор B:")
 
             # Решаем систему уравнений
             x_numpy = np.linalg.solve(A, B)
@@ -253,6 +251,15 @@ class Calculator:
             diff = abs(self.x[i] - x_numpy[i])
             print(f'\t Разница для x[{i}]: {diff}')
 
-        print(color.UNDERLINE + color.CYAN, 'Вывод:', color.END)
-        print(
-            'Метод Гаусса и библиотека NumPy дают схожие результаты. Однако, NumPy использует более оптимизированные алгоритмы, что может дать большую точность в численных вычислениях.')
+    def __print_matrix(self, matrix, title="Матрица:"):
+        print(color.UNDERLINE + color.YELLOW, title, color.END)
+
+        for row in matrix:
+            formatted_row = "  ".join(f"{float(elem):8.3f}" for elem in row)
+            print(formatted_row)
+
+    def __print_vector(self, vector, title="Вектор:"):
+        print(color.UNDERLINE + color.YELLOW, title, color.END)
+
+        for elem in vector:
+            print(f"{float(elem):8.3f}")
