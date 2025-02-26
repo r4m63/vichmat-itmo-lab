@@ -1,5 +1,5 @@
 import colors as color
-from solver import input_from_file as iff, input_from_console as ifc
+from culc import input_from_file as iff, input_from_console as ifc
 
 print(color.BOLD + color.RED, 'Решение Системы Уравнений методом Гаусса!', color.END)
 

@@ -17,7 +17,7 @@ def input_from_file(path):
             for row in file:
                 line = list(row.split())
                 if (line[-2] != '|') or (len(line) - 2 != n):
-                    print(color.BOLD + color.RED, 'Файл имеет ошибку формата! Исправте и попробуйте снова.', color.END)
+                    print(color.BOLD + color.RED, 'Файл имеет ошибку формата! Исправьте и попробуйте снова.', color.END)
                     return
                 a.append(list(line))
         file.close()
@@ -55,7 +55,7 @@ def input_from_console():
         print(color.BOLD + color.RED, 'Неправильный ввод! ', color.END)
 
 
-# Делает нашу матрицу дробными числами из строк
+# Делает матрицу дробными числами из строк
 def optimize(arr, n):
     i = 0
     while i < n:
@@ -86,32 +86,32 @@ class Calculator:
             print('\n', color.UNDERLINE + color.YELLOW, 'Наша система:', color.END)
             self.__print_system()
 
-            self.__make_triangle()
+            self.__make_triangle() # Приведение системы к треугольному виду
             print('\n', color.UNDERLINE + color.YELLOW, 'Треугольная матрица:', color.END)
             self.__print_system()
 
-            self.__get_determinate()
+            self.__get_determinate() # Вычисление определителя
 
+            # Обратный ход метода Гаусса
             self.__calc_vector_x()
             self.__print_vector_x()
 
-            self.__print_vector_residuals()
+            self.__print_vector_residuals() # Вычисление и вывод невязок
 
-            # Решение через numpy
-            self.__solve_with_numpy()
+            self.__solve_with_numpy() # Решение через numpy
         except ZeroDivisionError:
             return
         except ArithmeticError:
             return
 
-    # Если в процессе вычисления a11, a22, a33, ... = 0 - нужно переставить соответственно коэф.
+    # Проверка диагональных элементов и перестановка строк при необходимости
     def __check_diagonal(self, i):
         j = i
         while j < self.n:
             if (self.system[j][i] != 0) and (self.system[i][j] != 0):
                 swap = self.system[j]
                 self.system[j] = self.system[i]
-                self.system[i] = swap
+                self.system[i] = swap # Перестановка строк
                 self.swap += 1
                 return
             j += 1
@@ -120,11 +120,12 @@ class Calculator:
 
     # Вычисление треугольной матрицы прямым способом по формулам
     def __make_triangle(self):
+        # Прямой ход метода Гаусса: преобразование системы в треугольный вид
         try:
             i = 0
             while i < self.n:
                 if self.system[i][i] == 0:
-                    self.__check_diagonal(i)
+                    self.__check_diagonal(i) # Проверка и перестановка строк при нулевом диагональном элементе
                 m = i
                 while m < self.n - 1:
                     a = -(self.system[m + 1][i] / self.system[i][i])
