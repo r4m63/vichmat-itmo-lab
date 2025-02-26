@@ -1,5 +1,5 @@
 import colors as color
-from culc import input_from_file as iff, input_from_console as ifc
+from culc import input_from_file as iff, input_from_console as ifc, from_random
 
 print(color.BOLD + color.RED, 'Решение Системы Уравнений методом Гаусса!', color.END)
 
@@ -11,6 +11,7 @@ if __name__ == "__main__":
                   '\t', '1: Считывание линейной системы из файла.')
             print('\t', '2: Ввод линейной системы.')
             print('\t', '3: Выход.', color.END)
+            print('\t', '4: Рандом.', color.END)
             param = int(input('Введите число функции = '))
 
             if param == 1:
@@ -26,6 +27,9 @@ if __name__ == "__main__":
                 ifc()
             elif param == 3:
                 print(color.BOLD + color.PURPLE, 'Конец', color.END)
+                break
+            elif param == 4:
+                from_random()
                 break
             else:
                 print(color.BOLD + color.RED, 'Неправильно введено значение! Попробуйте снова.', color.END)
