@@ -1,0 +1,42 @@
+# Игнорируем файлы, создаваемые PyCharm
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Игнорируем виртуальные окружения
+venv/
+env/
+.venv/
+ENV/
+
+# Игнорируем кэш Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Игнорируем файлы, создаваемые setuptools
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Игнорируем файлы, создаваемые pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Игнорируем файлы, создаваемые Jupyter Notebook
+.ipynb_checkpoints/
+
+# Игнорируем файлы, создаваемые операционной системой
+.DS_Store
+Thumbs.db
+
+# Игнорируем логи и базы данных
+*.log
+*.sqlite3
+
+# Игнорируем файлы конфигурации и секреты
+.env
+.secrets
