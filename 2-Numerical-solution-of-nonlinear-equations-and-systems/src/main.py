@@ -103,8 +103,8 @@ class SystemOfEquations:
 
     def get_value(self, x):
         v = []
-        for e in self.equations:
-            v.append(e.f(x))
+        for i in self.equations:
+            v.append(i.f(x))
         return v
 
 
