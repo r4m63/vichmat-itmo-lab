@@ -2,9 +2,12 @@ from abc import abstractmethod
 
 import numpy as np
 from matplotlib import pyplot as plt
-from scipy.differentiate import derivative
+from scipy.misc import derivative
 from scipy.optimize import root
 from tabulate import tabulate
+
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
 # Reader
@@ -44,7 +47,7 @@ class Result:
         self.log = log
 
 
-# Multi Equation
+# MultiEquation
 class MultiEquation:
     def __init__(self, f, text):
         self.f = f
@@ -55,10 +58,10 @@ class MultiEquation:
 
     def partial_derivative(self, x, i):
         g = lambda _x: self.f(x[:i] + [_x] + x[i + 1:])
-        return derivative(g, x[i]).df
+        return derivative(g, x[i], dx=1e-6)  # Убрали .df, добавили явный параметр dx
 
 
-# Simple Equation
+# SimpleEquation
 class SimpleEquation:
     def __init__(self, f, text):
         self.f = f
@@ -68,10 +71,11 @@ class SimpleEquation:
         return self.text
 
     def fst_derivative(self, x):
-        return derivative(self.f, x).df
+        return derivative(self.f, x, dx=1e-6)  # Убрали .df, добавили явный параметр dx
 
     def snd_derivative(self, x):
-        return derivative(self.fst_derivative, x).df
+        # Для второй производной используем вложенный вызов derivative
+        return derivative(self.fst_derivative, x, dx=1e-6)  # Убрали .df, добавили явный параметр dx
 
     def is_single_root_exist(self, left, right):
         if self.f(left) * self.f(right) > 0:
@@ -348,7 +352,7 @@ def simple_iteration_method(equation, a, b, eps):
 
     phi = lambda x: x + _lambda * f(x)
 
-    phi_ = lambda x: derivative(phi, x).df
+    phi_ = lambda x: derivative(phi, x, dx=1e-6)
     q = np.max(abs(phi_(np.linspace(a, b, int(1 / eps)))))
     if q > 1:
         raise Exception(f'Метод не сходится так как значение q >= 1')
@@ -419,28 +423,54 @@ def draw_equation(x0, left, right, equation):
 
     x = np.linspace(l, r, 1000)
     y = equation.f(x)
-    plt.plot(x, y, label=f'f(x)', color='blue')
+    plt.plot(x, y, label=f'f(x) = {equation.text}', color='blue')
 
-    y0 = equation.f(x0)
-    plt.scatter([x0], [y0], label=f'({_round(x0, 3)}; {_round(y0, 3)})', color='red', s=50)
+    # Находим все корни на интервале
+    roots = []
+    x_vals = np.linspace(left, right, 1000)
+    y_vals = equation.f(x_vals)
 
-    x_l = left
-    y_l = equation.f(x_l)
-    plt.vlines(x_l, 0, y_l, colors='black', linestyles='--')
-    plt.scatter([x_l], [y_l], color='black', s=50)
+    # Ищем точки пересечения с осью X (знакопеременные участки)
+    for i in range(len(x_vals) - 1):
+        if y_vals[i] * y_vals[i + 1] < 0:
+            # Уточняем корень методом деления пополам
+            a, b = x_vals[i], x_vals[i + 1]
+            while b - a > 1e-6:
+                c = (a + b) / 2
+                if equation.f(a) * equation.f(c) < 0:
+                    b = c
+                else:
+                    a = c
+            root = (a + b) / 2
+            roots.append(root)
 
-    x_r = right
-    y_r = equation.f(x_r)
-    plt.vlines(x_r, 0, y_r, colors='black', linestyles='--')
-    plt.scatter([x_r], [y_r], color='black', s=50)
+    # Отрисовываем все найденные корни
+    for root in roots:
+        plt.scatter([root], [0], color='red', s=100, zorder=5,
+                    label=f'Корень ({_round(root, 3)}, 0)')
+        plt.scatter([root], [equation.f(root)], color='green', s=100, zorder=5,
+                    label=f'f({_round(root, 3)}) = {_round(equation.f(root), 3)}')
+
+    # Отрисовываем приближенное решение (x0)
+    # y0 = equation.f(x0)
+    # plt.scatter([x0], [y0], color='purple', s=100, marker='x',
+    #             label=f'Приближение ({_round(x0, 3)}, {_round(y0, 3)})')
+
+    # Границы интервала
+    plt.vlines(left, 0, equation.f(left), colors='gray', linestyles='--')
+    plt.vlines(right, 0, equation.f(right), colors='gray', linestyles='--')
 
     plt.axhline(0, color='black')
-
-    plt.title(f'График функции f(x)={equation.text}')
+    plt.title(f'График функции f(x) = {equation.text}')
     plt.xlabel('x')
     plt.ylabel('y')
     plt.grid(True, linestyle='--', alpha=0.7)
-    plt.legend()
+
+    # Убираем дублирующиеся легенды
+    handles, labels = plt.gca().get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    plt.legend(by_label.values(), by_label.keys(), loc='best')
+
     plt.tight_layout()
     plt.xlim(l, r)
     plt.show()
@@ -457,23 +487,38 @@ def draw_system(x0, point, system):
     x = np.linspace(x_min, x_max, 1000)
     y = np.linspace(y_min, y_max, 1000)
     x, y = np.meshgrid(x, y)
+
+    # Отрисовка уравнений системы
     f = system.equations[0].f([x, y])
     g = system.equations[1].f([x, y])
-    plt.contour(x, y, f, levels=[0], colors='blue')
-    plt.contour(x, y, g, levels=[0], colors='green')
+    plt.contour(x, y, f, levels=[0], colors='blue', linewidths=2)
+    plt.contour(x, y, g, levels=[0], colors='green', linewidths=2)
 
-    plt.scatter([x0[0]], [x0[1]], label=f'({_round(x0[0], 3)}; {_round(x0[1], 3)})', color='red', s=50)
-    plt.scatter([point[0]], [point[1]], label=f'({_round(point[0], 3)}; {_round(point[1], 3)})', color='black', s=50)
+    # Находим точные решения системы
+    solutions = []
+    # Ищем решения в окрестности найденного решения
+    sol = root(lambda x: system.get_value(x), x0).x
+    solutions.append(sol)
 
-    plt.axhline(0, color='black')
-    plt.axvline(0, color='black')
+    # Отрисовываем все решения
+    for sol in solutions:
+        plt.scatter([sol[0]], [sol[1]], color='red', s=200,
+                    label=f'Решение ({_round(sol[0], 3)}, {_round(sol[1], 3)})')
 
-    plt.title(f'График функции f(x)={system.equations[0].text}')
-    plt.title(f'График функции g(x)={system.equations[1].text}')
+    # Начальное приближение и найденное решение
+    # plt.scatter([x0[0]], [x0[1]], color='purple', s=100, marker='x',
+    #             label=f'Начальное приближение ({_round(x0[0], 3)}, {_round(x0[1], 3)})')
+    # plt.scatter([point[0]], [point[1]], color='orange', s=100, marker='s',
+    #             label=f'Найденное решение ({_round(point[0], 3)}, {_round(point[1], 3)})')
+
+    plt.axhline(0, color='black', linewidth=1)
+    plt.axvline(0, color='black', linewidth=1)
+
+    plt.title(f'Система уравнений:\n{system.equations[0].text}\n{system.equations[1].text}')
     plt.xlabel('x')
     plt.ylabel('y')
-    plt.grid(True, linestyle='--', alpha=0.7)
-    plt.legend()
+    plt.grid(True, linestyle='--', alpha=0.5)
+    plt.legend(loc='best')
     plt.tight_layout()
     plt.xlim(x_min, x_max)
     plt.ylim(y_min, y_max)
