@@ -1,250 +1,292 @@
 import math
+from typing import List
 
 
-MAX_BREAKPOINTS = 10_000
+# Класс для хранения результата вычислений: значение интеграла и количество итераций
+class Result:
+    def __init__(self, value, iterations):
+        self.value = value
+        self.iterations = iterations
 
-def f1(x):
-    return x**2
 
-def f2(x):
-    return math.sin(x)
+# Обёртка над функцией: хранит саму функцию и её текстовое представление
+class Function:
+    def __init__(self, f, text):
+        self.f = f
+        self.text = text
 
-def f3(x):
-    return math.exp(x)
+    def compute(self, x):
+        return self.f(x)
 
-def f4(x):
-    return 1 / x**2
+    def compute_or_none(self, x):
+        try:
+            return self.compute(x)
+        except Exception:
+            return None
 
-def f5(x):
-    return 1 / x
+    def __str__(self):
+        return self.text
 
-def f6(x):
-    return 1 / math.sqrt(x)
 
-def f7(x):
-    return -3*x**3 - 5*x**2 + 4*x - 2
+# Утилита округления до заданной точности
+def round_(n: float, precision: int):
+    return "{:.{}f}".format(n, precision)
 
-def f8(x):
-    return 10
 
-def f9(x):
-    return 1 / math.sqrt(2*x - x**2)
+# Вывод результата на экран
+def print_result(result: Result):
+    print(f'Найденное значение интеграла: {result.value}')
+    print(f'Число разбиения интервала интегрирования для достижения требуемой точности: {result.iterations}')
 
-functions = [f1, f2, f3, f4, f5, f6, f7, f8, f9]
 
-def rectangle_rule(func, a, b, n, mode="middle"):
+# Выбор одного из нескольких вариантов (с пользовательским вводом)
+def choose_options(message: str, options: List[str]) -> int:
+    options_str = ''.join(f'{i + 1} -> {val}\n' for i, val in enumerate(options))[:-1]
+    print(f'{message}:\n{options_str}')
+    result = None
+    while result is None:
+        try:
+            result = int(input())
+            if result not in range(1, len(options) + 1):
+                print(f'Выберите один из вариантов:\n{options_str}')
+                result = None
+                continue
+            break
+        except:
+            print('Значение должно быть числом. Попробуйте снова')
+    return result
+
+
+# Ввод вещественного числа с проверкой
+def read_float(message: str) -> float:
+    value = None
+    while value is None:
+        try:
+            value = float(input(f'{message}: '))
+            break
+        except:
+            print('Значение должны быть целым или дробным числом!')
+    return value
+
+
+# Методы численного интегрирования:
+# Метод правых прямоугольников
+def rectangles_method_right(function: Function, a: float, b: float, n: int):
     h = (b - a) / n
     result = 0
-
-    if mode == "left":
-        for i in range(n):
-            result += func(a + i * h)
-
-    elif mode == "right":
-        for i in range(1, n + 1):
-            result += func(a + i * h)
-
-    else:
-        for i in range(n):
-            result += func(a + (i + 0.5) * h)
-
-    result *= h
-    return result
+    for i in range(1, n + 1):
+        result += function.compute(a + i * h)
+    return result * h
 
 
-def trapezoid_rule(func, a, b, n):
+# Метод левых прямоугольников
+def rectangles_method_left(function: Function, a: float, b: float, n: int):
     h = (b - a) / n
-    result = (func(a) + func(b)) / 2
-
-    for i in range(1, n):
-        result += func(a + i * h)
-
-    result *= h
-    return result
-
-
-def simpson_rule(func, a, b, n):
-    h = (b - a) / n
-    result = func(a) + func(b)
-
-    for i in range(1, n):
-        coef = 3 + (-1)**(i + 1)
-        result += coef * func(a + i * h)
-
-    result *= h / 3
-    return result
-
-
-methods = {
-    "rectangle_left": lambda func, a, b, n: rectangle_rule(func, a, b, n, mode="left"),
-    "rectangle_right": lambda func, a, b, n: rectangle_rule(func, a, b, n, mode="right"),
-    "rectangle_middle": rectangle_rule,
-    "trapezoid": trapezoid_rule,
-    "simpson": simpson_rule
-}
-
-def compute_integral(func, a, b, epsilon, method):
-    n = 4
-    runge_coef = {"rectangle_left": 1, "rectangle_right": 1, "rectangle_middle": 3, "trapezoid": 3, "simpson": 15}
-    coef = runge_coef[method]
-
-    result = methods[method](func, a, b, n)
-    error = math.inf
-
-    while error > epsilon:
-        n *= 2
-        new_result = methods[method](func, a, b, n)
-        error = abs(new_result - result) / coef
-
-        result = new_result
-
-    return result, n
-
-
-def get_discontinuity_points(func, a, b, n):
-    breakpoints = []
-
-    try:
-        func(a)
-    except (ZeroDivisionError, OverflowError, ValueError):
-        breakpoints.append(a)
-
-    try:
-        func(b)
-    except (ZeroDivisionError, OverflowError, ValueError):
-        breakpoints.append(b)
-
-    try:
-        func((a + b) / 2)
-    except (ZeroDivisionError, OverflowError, ValueError):
-        breakpoints.append((a + b) / 2)
-
-    h = (b - a) / n
+    result = 0
     for i in range(n):
-        point = a + i * h
-        try:
-            func(a + i * h)
-        except (ZeroDivisionError, OverflowError, ValueError):
-            breakpoints.append(point)
-
-            if len(breakpoints) >= MAX_BREAKPOINTS:
-                return get_discontinuity_points(func, a, b, n // 10)
-
-    return list(set(breakpoints))
+        result += function.compute(a + i * h)
+    return result * h
 
 
-def try_to_compute(func, x):
-    try:
-        return func(x)
-    except Exception:
-        return None
+# Метод средних прямоугольников
+def rectangles_method_middle(function: Function, a: float, b: float, n: int):
+    h = (b - a) / n
+    result = 0
+    for i in range(1, n + 1):
+        x_prev = a + (i - 1) * h
+        x_i = a + i * h
+        x_h = (x_prev + x_i) / 2
+        result += function.compute(x_h)
+    return result * h
+
+
+# Метод трапеций
+def trapezoid_method(function: Function, a: float, b: float, n: int):
+    h = (b - a) / n
+    result = (function.compute(a) + function.compute(b)) / 2
+    for i in range(1, n):
+        result += function.compute(a + i * h)
+    return result * h
+
+
+# Метод Симпсона (параболическое приближение)
+def simpson_method(function: Function, a: float, b: float, n: int):
+    h = (b - a) / n
+    result = function.compute(a) + function.compute(b)
+    for i in range(1, n):
+        k = 2 if i % 2 == 0 else 4
+        result += k * function.compute(a + i * h)
+    return result * h / 3
+
+
+# Итеративное уточнение результата до достижения точности (с использованием правила Рунге)
+def calculate_integral(function: Function, a: float, b: float, eps: float, method, runge_k: int) -> Result:
+    n = INIT_N
+    result = method(function, a, b, n)
+    delta = math.inf
+    while delta > eps:
+        if n >= MAX_N:
+            raise Exception(f'Произведено разбиение на {MAX_N} отрезков, но ответ не найден')
+        n *= 2
+        new_result = method(function, a, b, n)
+        delta = abs(new_result - result) / (2 ** runge_k - 1)
+        result = new_result
+    return Result(result, n)
+
+
+# Поиск точек разрыва функции на отрезке [a, b]
+def get_breaking_points(function: Function, a: float, b: float):
+    n = math.ceil((b - a) / BREAKING_POINTS_ACCURACY)
+    h = (b - a) / n
+    breaking_points = []
+    last_i = -2
+    for i in range(n + 1):
+        x = a + i * h
+        if function.compute_or_none(x) is None:
+            if i - 1 == last_i and i != n:
+                raise Exception(
+                    "Фунция может быть неопределена только в некоторых точках.\nНа выбранном отрезке существуют области неопредедённости.\nИнтегрирование невозможно")
+            last_i = i
+            breaking_points.append(x)
+    return breaking_points
+
+
+# Проверка на бесконечность
+def is_inf(x):
+    return abs(x) >= 1 / CONVERGENCE_EPS - 1 / BREAKING_POINTS_ACCURACY
+
+
+# Проверка сходимости несобственного интеграла
+def is_converges(function: Function, a: float, b: float, breaking_points: List[float]) -> bool:
+    eps = CONVERGENCE_EPS
+    breaking_points_tmp = breaking_points.copy()
+
+    if a in breaking_points_tmp:
+        breaking_points_tmp.remove(a)
+        y = function.compute_or_none(a + eps)
+        if y is None or is_inf(y):
+            return False
+
+    if b in breaking_points_tmp:
+        breaking_points_tmp.remove(b)
+        y = function.compute_or_none(b - eps)
+        if y is None or is_inf(y):
+            return False
+
+    for p in breaking_points_tmp:
+        y1 = function.compute_or_none(p - eps)
+        y2 = function.compute_or_none(p + eps)
+        if (y1 is None and y2 is None) or (is_inf(y1) and is_inf(y2) and y1 * y2 > 0):
+            return False
+
+    return True
+
+
+# Вычисление несобственного интеграла по частям, с проверкой разрывов
+def calculate_improper_integral(function: Function, a: float, b: float, eps: float, method: Function, runge_k: int,
+                                breaking_points: List[float]) -> Result:
+    conv_eps = CONVERGENCE_EPS
+    result = 0
+    iterations = 0
+
+    if a not in breaking_points:
+        b_ = breaking_points[0] - conv_eps
+        y = function.compute_or_none(b_)
+        if y is not None and not is_inf(y):
+            result_ = calculate_integral(function, a, b_, eps, method, runge_k)
+            result += result_.value
+            iterations += result_.iterations
+
+    if b not in breaking_points:
+        a_ = breaking_points[-1] + conv_eps
+        y = function.compute_or_none(a_)
+        if y is not None and not is_inf(y):
+            result_ = calculate_integral(function, a_, b, eps, method, runge_k)
+            result += result_.value
+            iterations += result_.iterations
+
+    for i in range(1, len(breaking_points)):
+        a_ = breaking_points[i] - conv_eps
+        b_ = breaking_points[i - 1] + conv_eps
+        y_a_ = function.compute_or_none(a_)
+        y_b_ = function.compute_or_none(b_)
+
+        if y_a_ is not None and y_b_ is not None and not (is_inf(y_a_) and is_inf(y_b_) and y_a_ * y_b_ > 0):
+            result_ = calculate_integral(function, a_, b_, eps, method, runge_k)
+            result += result_.value
+            iterations += result_.iterations
+
+    return Result(result, iterations)
+
+
+# Конфигурация
+INIT_N = 4
+MAX_N = 1_000_000
+BREAKING_POINTS_ACCURACY = 1e-4
+CONVERGENCE_EPS = 1e-9
+METHODS_STRS = ['Метод прямоугольников (левый)', 'Метод прямоугольников (правый)', 'Метод прямоугольников (средний)',
+                'Метод трапеций', 'Метод Симпсона']
+METHODS = [rectangles_method_left, rectangles_method_right, rectangles_method_middle, trapezoid_method, simpson_method]
+METHODS_RUNGE_K = [1, 1, 2, 2, 4]  # Порядок точности методов
+FUNCTIONS = [
+    Function(lambda x: x ** 2, 'x^2'),
+    Function(lambda x: math.sin(x), 'sin(x)'),
+    Function(lambda x: x ** 3 - 3 * x ** 2 + 7 * x - 10, 'x^3 - 3x^2 + 7x - 10'),
+    Function(lambda x: 5, '5'),
+    Function(lambda x: 1 / math.sqrt(x), '1 / sqrt(x)'),
+    Function(lambda x: 1 / (1 - x), '1 / (1 - x)'),
+    Function(lambda x: 1 / x, '1 / x'),
+    Function(lambda x: 1 / x ** 2, '1 / x^2')
+]
+
+
+def main():
+    # Выбор функции
+    function_id = choose_options('Выберите функцию для интегрирования', FUNCTIONS) - 1
+    function = FUNCTIONS[function_id]
+
+    # Ввод границ интегрирования
+    a = read_float('Введите нижний предел интегрирования')
+    b = read_float('Введите верхний предел интегрирования')
+
+    is_inv = False
+    if b < a:
+        a, b = b, a
+        is_inv = True  # Если порядок границ нарушен, меняем и запоминаем
+
+    # Проверка на наличие разрывов
+    is_improper_integral = False
+    breaking_points = get_breaking_points(function, a, b)
+    if len(breaking_points) != 0:
+        print(f'Функция терпит разрыв в точках: {breaking_points}')
+        is_improper_integral = True
+
+    if is_improper_integral and not is_converges(function, a, b, breaking_points):
+        raise Exception('Интеграл расходится')
+
+    # Выбор метода
+    method_id = choose_options('Выберите метод для интегрирования', METHODS_STRS) - 1
+    method = METHODS[method_id]
+    runge_k = METHODS_RUNGE_K[method_id]
+
+    # Ввод точности
+    eps = read_float('Введите точность')
+
+    # Вычисление интеграла
+    if not is_improper_integral:
+        result = calculate_integral(function, a, b, eps, method, runge_k)
+    else:
+        result = calculate_improper_integral(function, a, b, eps, method, runge_k, breaking_points)
+
+    # Учёт изменения порядка границ
+    if is_inv:
+        result.value *= -1
+
+    print_result(result)
 
 
 if __name__ == "__main__":
-    while (True):
-        print("Выберите функцию:")
-        print("1. x^2")
-        print("2. sin(x)")
-        print("3. e^x")
-        print("4. 1/x^2")
-        print("5. 1/x")
-        print("6. 1/sqrt(x)")
-        print("7. -3x^3 - 5x^2 + 4x - 2")
-        print("8. 10")
-        print("9. 1 / sqrt(2x - x^2)")
-
-        choosen_f = int(input("Ваш выбор: ")) - 1
-        func = functions[choosen_f]
-
-        if (choosen_f not in [0, 2, 3, 4, 5, 6, 7, 8]):
-            print("Пожалуйста, выберите корректный номер функции!\n")
-            continue
-
-        while (True):
-            try:
-                a = float(input("Введите начальный предел интегрирования: "))
-                b = float(input("Введите конечный предел интегрирования: "))
-
-                if (a >= b):
-                    print(f'{a} >= {b}. Пожалуйста, введите a < b')
-                else:
-                    break
-            except:
-                print("! Ошибка ввода: введите пределы интегрирования еще раз!\n")
-
-        breakpoints = get_discontinuity_points(func, a, b, math.ceil(b - a) * 1_000)
-
-        # Если разрыв: установить сходимость
-        if len(breakpoints) != 0:
-            print(f"! Обнаружен точка разрыва: функция имеет разрыв или не существует в точках {breakpoints}.")
-
-            eps = 0.00001
-            converges = True
-            for bp in breakpoints:
-                y1 = try_to_compute(func, bp - eps)
-                y2 = try_to_compute(func, bp + eps)
-                if y1 is not None and y2 is not None and abs(y1 - y2) > eps or (y1 == y2 and y1 is not None):
-                    converges = False
-                    break
-
-            if not converges:
-                # расходящийся => выводить сообщение: «Интеграл не существует»
-                print('- Интеграл не существует: интеграл не сходится.')
-            else:
-                # сходящийся => реализовать в программе вычисление несобственных интегралов 2 рода
-                print('+ Интеграл сходится.')
-                epsilon = float(input("Введите требуемую точность вычислений: "))
-
-                for method in methods:
-                    print(f"\n*   Метод: {method}")
-
-                    if len(breakpoints) == 1:
-                        if a in breakpoints:
-                            a += eps
-                        elif b in breakpoints:
-                            b -= eps
-                    else:
-                        res = 0
-                        n = 0
-                        if not (try_to_compute(func, a) is None or try_to_compute(func, breakpoints[0] - eps) is None):
-                            results = compute_integral(func, a, breakpoints[0] - eps, epsilon, method)
-                            res += results[0]
-                            n += results[1]
-
-                        if not (try_to_compute(func, b) is None or try_to_compute(func, breakpoints[0] + eps) is None):
-                            results = compute_integral(func, breakpoints[0] + eps, b, epsilon, method)
-                            res += results[0]
-                            n += results[1]
-
-                        for bi in range(len(breakpoints) - 1):
-                            b_cur = breakpoints[bi]
-                            b_next = breakpoints[bi + 1]
-
-                            if not (try_to_compute(func, b_cur + eps) is None or try_to_compute(func, b_next - eps) is None):
-                                results =  compute_integral(func, b_cur + eps, b_next - eps, epsilon, method)
-                                res += results[0]
-                                n += results[1]
-
-                        print(f"Значение интеграла: {res}")
-                        print(f"Число разбиений интервала интегрирования для достижения требуемой точности: n = {n}")
-
-                    if not breakpoints or a - eps in breakpoints or b + eps in breakpoints:
-                        result, n = compute_integral(func, a, b, epsilon, method)
-                        if result is not None and n is not None:
-                            print(f"Значение интеграла: {result}")
-                            print(f"Число разбиений интервала интегрирования для достижения требуемой точности: n = {n}")
-        else:
-            # Если нет разрыва: просто вычисляем
-            epsilon = float(input("Введите требуемую точность вычислений: "))
-
-            for method in methods:
-                print(f"\n*   Метод: {method}")
-                result, n = compute_integral(func, a, b, epsilon, method)
-
-                if result is not None and n is not None:
-                    print(f"Значение интеграла: {result}")
-                    print(f"Число разбиений интервала интегрирования для достижения требуемой точности: n = {n}")
-
-        if (input('\nЕще раз? [y/n]: ') == 'n'):
-            print("Спасибо за использование программы!")
-            break
+    try:
+        main()
+    except Exception as e:
+        print(e)
