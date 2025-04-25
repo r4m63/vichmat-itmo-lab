@@ -342,7 +342,7 @@ def draw_plot(x, y, phis, names):
     plt.ylabel('y')
     plt.legend()
     plt.grid(True)
-
+    plt.tight_layout()
     plt.show()
 
 
@@ -411,4 +411,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception as e:
+        print(e)
