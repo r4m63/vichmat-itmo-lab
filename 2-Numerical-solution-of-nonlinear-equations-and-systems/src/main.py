@@ -1,3 +1,4 @@
+import warnings
 from abc import abstractmethod
 
 import numpy as np
@@ -6,7 +7,6 @@ from scipy.misc import derivative
 from scipy.optimize import root
 from tabulate import tabulate
 
-import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 

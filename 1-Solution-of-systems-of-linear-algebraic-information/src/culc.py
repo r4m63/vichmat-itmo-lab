@@ -141,7 +141,7 @@ class Calculator:
                 self.swap += 1
                 return
             j += 1
-        print(color.BOLD + color.RED, 'Нет решений!', color.END) # TODO: -> алгоритм ошибок вместо принтов
+        print(color.BOLD + color.RED, 'Нет решений!', color.END)  # TODO: -> алгоритм ошибок вместо принтов
         return ArithmeticError
 
     # Вычисление треугольной матрицы прямым способом по формулам
