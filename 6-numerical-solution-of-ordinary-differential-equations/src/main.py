@@ -159,77 +159,136 @@ def draw_plot(x, y, solution_f, method_name):
 
 # METHODS
 
+# Максимально допустимое число точек и итераций для адаптивного уточнения
+MAX_N = 100_000
+MAX_ITERATIONS = 1_000_000
+
+
 def euler_method(f, x, y0):
+    """
+    Метод Эйлера (явный, одношаговый).
+    Аппроксимация: y_{k+1} = y_k + h * f(x_k, y_k)
+    """
     n = len(x)
-    y = [y0]
+    y = [y0]  # начальное условие
     for i in range(1, n):
+        # шаг вдоль оси x (можно работать и на неравномерной сетке)
         h = x[i] - x[i - 1]
-        y.append(y[i - 1] + h * f(x[i - 1], y[i - 1]))
+        # обновляем y по формуле Эйлера
+        y_next = y[i - 1] + h * f(x[i - 1], y[i - 1])
+        y.append(y_next)
     return y
 
 
 def improved_euler_method(f, x, y0):
+    """
+    Усовершенствованный метод Эйлера (Heun).
+    Аппроксимация: среднее значение скорости на конце и начале шага.
+    """
     n = len(x)
     y = [y0]
     for i in range(1, n):
         h = x[i] - x[i - 1]
-        y.append(y[i - 1] + (h / 2) * (f(x[i - 1], y[i - 1]) + f(x[i - 1] + h, y[i - 1] + h * f(x[i - 1], y[i - 1]))))
+        # первая оценка производной в начале шага
+        k1 = f(x[i - 1], y[i - 1])
+        # предсказание y на следующем узле
+        y_pred = y[i - 1] + h * k1
+        # оценка производной в конце шага
+        k2 = f(x[i - 1] + h, y_pred)
+        # усреднённое приращение
+        y_next = y[i - 1] + (h / 2) * (k1 + k2)
+        y.append(y_next)
     return y
 
 
 def second_order_runge_kutta_method(f, x, y0):
+    """
+    Метод Рунге–Кутты 2-го порядка (двухточечная схема).
+    Аппроксимация: y_{k+1} = y_k + (h/2)*(k1 + k2),
+      где k1 = f(x_k,y_k), k2 = f(x_k + h, y_k + h*k1)
+    """
     n = len(x)
     y = [y0]
     for i in range(1, n):
         h = x[i] - x[i - 1]
-        k1 = h * f(x[i - 1], y[i - 1])
-        k2 = h * f(x[i - 1] + h, y[i - 1] + k1)
-        y.append(y[i - 1] + 0.5 * (k1 + k2))
+        k1 = f(x[i - 1], y[i - 1])
+        k2 = f(x[i - 1] + h, y[i - 1] + h * k1)
+        y_next = y[i - 1] + (h / 2) * (k1 + k2)
+        y.append(y_next)
     return y
 
 
 def fourth_order_runge_kutta_method(f, x, y0):
+    """
+    Метод Рунге–Кутты 4-го порядка.
+    Формулы:
+      k1 = f(x_k,       y_k)
+      k2 = f(x_k + h/2, y_k + h*k1/2)
+      k3 = f(x_k + h/2, y_k + h*k2/2)
+      k4 = f(x_k + h,   y_k + h*k3)
+      y_{k+1} = y_k + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
+    """
     n = len(x)
     y = [y0]
     for i in range(1, n):
         h = x[i] - x[i - 1]
-        k1 = h * f(x[i - 1], y[i - 1])
-        k2 = h * f(x[i - 1] + (h / 2), y[i - 1] + (k1 / 2))
-        k3 = h * f(x[i - 1] + (h / 2), y[i - 1] + (k2 / 2))
-        k4 = h * f(x[i - 1] + h, y[i - 1] + k3)
-        y.append(y[i - 1] + (k1 + 2 * k2 + 2 * k3 + k4) / 6)
+        xk = x[i - 1]
+        yk = y[i - 1]
+
+        k1 = f(xk, yk)
+        k2 = f(xk + h / 2, yk + h * k1 / 2)
+        k3 = f(xk + h / 2, yk + h * k2 / 2)
+        k4 = f(xk + h, yk + h * k3)
+
+        y_next = yk + (h / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
+        y.append(y_next)
     return y
 
 
 def adams_method(f, x, y0, eps):
+    """
+    Метод Адамса (предиктор–корректор, порядок 4).
+    1) Старт: первые 4 точки считаем RK4.
+    2) Predictor (Adams–Bashforth): явная формула с 4 предыдущими f.
+    3) Corrector (Adams–Moulton): неявная итерация до |Δ|<eps.
+    """
     n = len(x)
+    # 1) Разгонные шаги
     y = fourth_order_runge_kutta_method(f, x[:4], y0)
 
+    # 2) Основной цикл по узлам
     for i in range(4, n):
         h = x[i] - x[i - 1]
-        y_pred = y[i - 1] + (h / 24) * (
-                55 * f(x[i - 1], y[i - 1]) -
-                59 * f(x[i - 2], y[i - 2]) +
-                37 * f(x[i - 3], y[i - 3]) -
-                9 * f(x[i - 4], y[i - 4])
+        # предсказание y на шаге i
+        y_pred = (
+                y[i - 1]
+                + (h / 24) * (
+                        55 * f(x[i - 1], y[i - 1])
+                        - 59 * f(x[i - 2], y[i - 2])
+                        + 37 * f(x[i - 3], y[i - 3])
+                        - 9 * f(x[i - 4], y[i - 4])
+                )
         )
 
-        iterations = 0
-        while True:
-            if iterations == MAX_ITERATIONS:
-                raise Exception(f"Достигнуто максимальное количество итераций")
-            iterations += 1
-            y_corr = y[i - 1] + (h / 24) * (
-                    9 * f(x[i], y_pred) +
-                    19 * f(x[i - 1], y[i - 1]) -
-                    5 * f(x[i - 2], y[i - 2]) +
-                    f(x[i - 3], y[i - 3])
+        # 3) Итерационная коррекция
+        for it in range(MAX_ITERATIONS):
+            f_pred = f(x[i], y_pred)
+            y_corr = (
+                    y[i - 1]
+                    + (h / 24) * (
+                            9 * f_pred
+                            + 19 * f(x[i - 1], y[i - 1])
+                            - 5 * f(x[i - 2], y[i - 2])
+                            + 1 * f(x[i - 3], y[i - 3])
+                    )
             )
-
+            # проверяем сходимость по eps
             if abs(y_corr - y_pred) < eps:
                 y_pred = y_corr
                 break
             y_pred = y_corr
+        else:
+            raise Exception("Метод Адамса: не сошёлся корректор")
 
         y.append(y_pred)
 
@@ -237,33 +296,49 @@ def adams_method(f, x, y0, eps):
 
 
 def milne_method(f, x, y0, eps):
+    """
+    Метод Милна (предиктор–корректор, порядок 4).
+    1) Старт: первые 4 точки — RK4.
+    2) Predictor (Milne): явная формула с точек i-3..i-1.
+    3) Corrector: итерация до |Δ|<eps.
+    """
     n = len(x)
     y = fourth_order_runge_kutta_method(f, x[:4], y0)
 
     for i in range(4, n):
         h = x[i] - x[i - 1]
-        y_pred = y[i - 4] + (4 * h / 3) * (
-                2 * f(x[i - 3], y[i - 3]) - f(x[i - 2], y[i - 2]) + 2 * f(x[i - 1], y[i - 1]))
+        # предсказание по Милну
+        y_pred = (
+                y[i - 4]
+                + (4 * h / 3) * (
+                        2 * f(x[i - 3], y[i - 3])
+                        - 1 * f(x[i - 2], y[i - 2])
+                        + 2 * f(x[i - 1], y[i - 1])
+                )
+        )
 
-        iterations = 0
-        while True:
-            if iterations == MAX_ITERATIONS:
-                raise Exception(f"Достигнуто максимальное количество итераций")
-            iterations += 1
-            y_corr = y[i - 2] + (h / 3) * (f(x[i - 2], y[i - 2]) + 4 * f(x[i - 1], y[i - 1]) + f(x[i], y_pred))
-
+        # итеративная коррекция
+        for it in range(MAX_ITERATIONS):
+            f_pred = f(x[i], y_pred)
+            y_corr = (
+                    y[i - 2]
+                    + (h / 3) * (
+                            f(x[i - 2], y[i - 2])
+                            + 4 * f(x[i - 1], y[i - 1])
+                            + f_pred
+                    )
+            )
             if abs(y_corr - y_pred) < eps:
                 y_pred = y_corr
                 break
             y_pred = y_corr
+        else:
+            raise Exception("Метод Милна: не сошёлся корректор")
 
         y.append(y_pred)
 
     return y
 
-
-MAX_N = 100_000
-MAX_ITERATIONS = 1000_000
 
 ONE_STEP_METHODS = [
     euler_method,
