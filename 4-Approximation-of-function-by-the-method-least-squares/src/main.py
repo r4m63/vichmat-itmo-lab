@@ -1,6 +1,5 @@
 import math
 from abc import abstractmethod
-
 import numpy as np
 from matplotlib import pyplot as plt
 
